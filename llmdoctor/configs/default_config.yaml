@@ -1,0 +1,61 @@
+# LLMdoctor Configuration File
+
+model_paths:
+  patient_model_name: "Qwen/Qwen1.5-72B-Chat"  # Or local path to your model
+  doctor_model_name: "Qwen/Qwen1.5-4B-Chat"    # Or local path to your model
+  # patient_model_name: "sshleifer/tiny-gpt2" # Use for quick testing if needed
+  # doctor_model_name: "sshleifer/tiny-gpt2"  # Use for quick testing if needed
+
+data_paths:
+  # Path to your preference dataset in JSONL format
+  # Each line: {"prompt": "...", "chosen": "preferred response", "rejected": "unpreferred response"}
+  # Or other supported formats by data_utils.py (e.g., response_j/response_k)
+  preference_dataset_jsonl: "path/to/your/preference_data.jsonl" 
+  # Example: "data/anthropic_hh_rlhf_small.jsonl" (if you have such a file)
+  
+  # Optional: Path for saving/loading processed data or model checkpoints
+  # output_dir: "outputs/"
+
+reward_acquisition_params:
+  # Parameters from Section 3.1 Token-Level Reward Acquisition
+  epsilon: 0.000001    # Small constant for normalization in token importance (default: 1e-6)
+  tau: 1.0             # Temperature for smoothing importance scores (default: 1.0)
+  sparsity_threshold: 0.1 # Threshold for non-zero rewards (default: 0.1)
+
+tfpo_params:
+  # Parameters from Section 3.2 TFPO-based Fine-grained Preference Tuning
+  # Overall TFPO training objective: lambda * L_value + L_SubTB
+  lambda_val_loss: 0.1      # Weight for the value discrimination loss (default: 0.1)
+  gamma_val_loss: 0.1       # Margin for value discrimination loss (default: 0.1)
+  
+  # Optimizer settings for TFPO trainer
+  learning_rate: 0.00001    # Learning rate (default: 1e-5)
+  optimizer_type: "Adam"    # (Future use, current trainer uses Adam by default)
+  
+  # Training loop settings
+  epochs: 3
+  batch_size: 4             # Number of trajectories per batch for SubTB loss
+  max_seq_length_doctor: 256 # Max sequence length for inputs to the doctor model during TFPO
+
+online_alignment_params:
+  # Parameters from Section 3.3 Online Alignment
+  # pi_decode proportional to [pi_base]^alpha * [pi_r]^beta
+  alpha: 1.0                # Weight for patient model's base probabilities
+  beta_values: [0.5]        # List of weights for doctor model(s) preference signals. 
+                            # If one doctor model, one value. If multiple, list of values.
+  
+  # Generation settings for online_alignment.generate_sequence
+  max_generation_length: 128 # Max tokens to generate after prompt
+  temperature: 0.7           # Sampling temperature
+  top_k: 50                  # Top-k filtering (0 to disable)
+
+training_settings:
+  device: "auto"             # "auto", "cuda", "cpu". 'auto' will try to use CUDA if available.
+  use_quantization_patient: True # Use 4-bit quantization for the (large) patient model
+  use_quantization_doctor: False # Don't use quantization for the (smaller) doctor model by default
+  seed: 42                   # Random seed for reproducibility
+  # gradient_accumulation_steps: 1 # (Future use for TFPO trainer)
+
+# logging_settings:
+  # log_level: "INFO"
+  # log_file: "llmdoctor.log"
